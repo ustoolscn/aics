@@ -112,7 +112,7 @@ func New(cfg config.Config) *App {
 func setupSessionStore(cfg config.Config, logger *slog.Logger) session.Store {
 	if cfg.HistorySource == "feishu" {
 		logger.Info("using feishu topic history", "lookback", cfg.HistoryLookback, "max_history", cfg.MaxHistoryMessages)
-		return feishuhistory.NewStore(cfg.FeishuAppID, cfg.FeishuAppSecret, cfg.HistoryLookback)
+		return feishuhistory.NewStore(cfg.FeishuAppID, cfg.FeishuAppSecret, cfg.HistoryLookback, logger)
 	}
 	logger.Info("using memory session history", "max_history", cfg.MaxHistoryMessages)
 	return session.NewMemoryStore()

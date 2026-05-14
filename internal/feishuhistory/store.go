@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
 	"time"
@@ -18,9 +19,10 @@ type Store struct {
 	client         *lark.Client
 	lookback       time.Duration
 	maxFetchFactor int
+	logger         *slog.Logger
 }
 
-func NewStore(appID, appSecret string, lookback time.Duration) *Store {
+func NewStore(appID, appSecret string, lookback time.Duration, logger *slog.Logger) *Store {
 	if lookback <= 0 {
 		lookback = 7 * 24 * time.Hour
 	}
@@ -28,6 +30,7 @@ func NewStore(appID, appSecret string, lookback time.Duration) *Store {
 		client:         lark.NewClient(appID, appSecret),
 		lookback:       lookback,
 		maxFetchFactor: 4,
+		logger:         logger,
 	}
 }
 
@@ -50,8 +53,8 @@ func (s *Store) AddMessage(_ context.Context, _ session.Message) error {
 }
 
 func (s *Store) RecentMessages(ctx context.Context, sessionID string, limit int) ([]session.Message, error) {
-	_, threadID, ok := strings.Cut(sessionID, ":")
-	if !ok || strings.TrimSpace(threadID) == "" {
+	chatID, threadID, ok := strings.Cut(sessionID, ":")
+	if !ok || strings.TrimSpace(chatID) == "" || strings.TrimSpace(threadID) == "" {
 		return nil, fmt.Errorf("invalid feishu history session id: %s", sessionID)
 	}
 	if limit <= 0 {
@@ -83,7 +86,7 @@ func (s *Store) RecentMessages(ctx context.Context, sessionID string, limit int)
 
 	var history []session.Message
 	for _, item := range resp.Data.Items {
-		msg, ok := toSessionMessage(item, sessionID)
+		msg, ok := toSessionMessage(item, sessionID, chatID, threadID)
 		if !ok {
 			continue
 		}
@@ -95,14 +98,23 @@ func (s *Store) RecentMessages(ctx context.Context, sessionID string, limit int)
 	if len(history) > limit {
 		history = history[len(history)-limit:]
 	}
+	if s.logger != nil {
+		s.logger.Info("loaded feishu topic history", "chat_id", chatID, "thread_id", threadID, "raw", len(resp.Data.Items), "filtered", len(history), "limit", limit)
+	}
 	return history, nil
 }
 
-func toSessionMessage(item *larkim.Message, sessionID string) (session.Message, bool) {
+func toSessionMessage(item *larkim.Message, sessionID string, chatID string, threadID string) (session.Message, bool) {
 	if item == nil || item.Body == nil || item.Body.Content == nil {
 		return session.Message{}, false
 	}
 	if item.Deleted != nil && *item.Deleted {
+		return session.Message{}, false
+	}
+	if deref(item.ChatId) != "" && deref(item.ChatId) != chatID {
+		return session.Message{}, false
+	}
+	if !belongsToThread(item, threadID) {
 		return session.Message{}, false
 	}
 
@@ -122,6 +134,17 @@ func toSessionMessage(item *larkim.Message, sessionID string) (session.Message, 
 		Content:         content,
 		CreatedAt:       parseMillis(deref(item.CreateTime)),
 	}, true
+}
+
+func belongsToThread(item *larkim.Message, threadID string) bool {
+	threadID = strings.TrimSpace(threadID)
+	if threadID == "" {
+		return false
+	}
+	return deref(item.ThreadId) == threadID ||
+		deref(item.RootId) == threadID ||
+		deref(item.ParentId) == threadID ||
+		deref(item.MessageId) == threadID
 }
 
 func extractText(content string, messageType string) string {
