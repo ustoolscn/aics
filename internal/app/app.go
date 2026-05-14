@@ -84,6 +84,7 @@ func New(cfg config.Config) *App {
 		cfg.ReactionDone,
 		cfg.LogRawMessage,
 		cfg.ReplyFormat,
+		cfg.ReplyMarkdownMargin,
 		cfg.LLMStream,
 		cfg.StreamPlaceholder,
 		cfg.StreamUpdateEvery,

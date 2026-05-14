@@ -23,6 +23,7 @@ type Config struct {
 	ReactionDone        string
 	LogRawMessage       bool
 	ReplyFormat         string
+	ReplyMarkdownMargin string
 	PromptFile          string
 	LLMBaseURL          string
 	LLMAPIKey           string
@@ -81,6 +82,7 @@ func Load() (Config, error) {
 		ReactionDone:        getenv("REACTION_DONE_EMOJI", getenv("DONE_REACTION_EMOJI", "DONE")),
 		LogRawMessage:       getenvBool("LOG_RAW_MESSAGE", true),
 		ReplyFormat:         strings.ToLower(getenv("REPLY_FORMAT", "markdown_card")),
+		ReplyMarkdownMargin: getenv("REPLY_MARKDOWN_MARGIN", "0px 0px 8px 0px"),
 		PromptFile:          getenv("PROMPT_FILE", "configs/customer_service.md"),
 		LLMBaseURL:          strings.TrimRight(getenv("LLM_BASE_URL", "https://api.openai.com/v1"), "/"),
 		LLMAPIKey:           os.Getenv("LLM_API_KEY"),

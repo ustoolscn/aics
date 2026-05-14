@@ -37,6 +37,7 @@ data:
   REACTION_DONE_EMOJI: "DONE"
   LOG_RAW_MESSAGE: "false"
   REPLY_FORMAT: "markdown_card"
+  REPLY_MARKDOWN_MARGIN: "0px 0px 8px 0px"
   PROMPT_FILE: "configs/customer_service.md"
   LLM_BASE_URL: "https://cooper-api.com/v1"
   LLM_MODEL: "gpt-5.5"

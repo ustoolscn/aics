@@ -25,45 +25,47 @@ import (
 )
 
 type Bot struct {
-	client             *lark.Client
-	wsClient           *ws.Client
-	dispatcher         *dispatcher.EventDispatcher
-	orchestrator       *orchestrator.Orchestrator
-	logger             *slog.Logger
-	reactionReceived   string
-	reactionProcessing string
-	reactionDone       string
-	reactionStates     *reactionStateStore
-	logRawMessage      bool
-	replyFormat        string
-	stream             bool
-	streamPlaceholder  string
-	updateEvery        time.Duration
-	deduper            Deduper
-	imageInputMode     string
-	imageUploader      *imagehost.Client
+	client              *lark.Client
+	wsClient            *ws.Client
+	dispatcher          *dispatcher.EventDispatcher
+	orchestrator        *orchestrator.Orchestrator
+	logger              *slog.Logger
+	reactionReceived    string
+	reactionProcessing  string
+	reactionDone        string
+	reactionStates      *reactionStateStore
+	logRawMessage       bool
+	replyFormat         string
+	replyMarkdownMargin string
+	stream              bool
+	streamPlaceholder   string
+	updateEvery         time.Duration
+	deduper             Deduper
+	imageInputMode      string
+	imageUploader       *imagehost.Client
 }
 
-func NewBot(appID, appSecret, verificationToken, encryptKey, reactionReceived string, reactionProcessing string, reactionDone string, logRawMessage bool, replyFormat string, stream bool, streamPlaceholder string, updateEvery time.Duration, deduper Deduper, imageInputMode string, imageUploader *imagehost.Client, orch *orchestrator.Orchestrator, logger *slog.Logger) *Bot {
+func NewBot(appID, appSecret, verificationToken, encryptKey, reactionReceived string, reactionProcessing string, reactionDone string, logRawMessage bool, replyFormat string, replyMarkdownMargin string, stream bool, streamPlaceholder string, updateEvery time.Duration, deduper Deduper, imageInputMode string, imageUploader *imagehost.Client, orch *orchestrator.Orchestrator, logger *slog.Logger) *Bot {
 	if deduper == nil {
 		deduper = NewMemoryDeduper(time.Hour)
 	}
 	bot := &Bot{
-		client:             lark.NewClient(appID, appSecret),
-		orchestrator:       orch,
-		logger:             logger,
-		reactionReceived:   reactionReceived,
-		reactionProcessing: reactionProcessing,
-		reactionDone:       reactionDone,
-		reactionStates:     newReactionStateStore(),
-		logRawMessage:      logRawMessage,
-		replyFormat:        strings.ToLower(strings.TrimSpace(replyFormat)),
-		stream:             stream,
-		streamPlaceholder:  streamPlaceholder,
-		updateEvery:        updateEvery,
-		deduper:            deduper,
-		imageInputMode:     strings.ToLower(strings.TrimSpace(imageInputMode)),
-		imageUploader:      imageUploader,
+		client:              lark.NewClient(appID, appSecret),
+		orchestrator:        orch,
+		logger:              logger,
+		reactionReceived:    reactionReceived,
+		reactionProcessing:  reactionProcessing,
+		reactionDone:        reactionDone,
+		reactionStates:      newReactionStateStore(),
+		logRawMessage:       logRawMessage,
+		replyFormat:         strings.ToLower(strings.TrimSpace(replyFormat)),
+		replyMarkdownMargin: strings.TrimSpace(replyMarkdownMargin),
+		stream:              stream,
+		streamPlaceholder:   streamPlaceholder,
+		updateEvery:         updateEvery,
+		deduper:             deduper,
+		imageInputMode:      strings.ToLower(strings.TrimSpace(imageInputMode)),
+		imageUploader:       imageUploader,
 	}
 
 	eventDispatcher := dispatcher.NewEventDispatcher(verificationToken, encryptKey).
@@ -512,7 +514,7 @@ func (b *Bot) updateMessage(ctx context.Context, messageID string, text string) 
 func (b *Bot) replyPayload(text string) (string, string, error) {
 	switch b.replyFormat {
 	case "markdown_card", "card", "interactive":
-		content, err := markdownCardContent(text)
+		content, err := markdownCardContent(text, b.replyMarkdownMargin)
 		return larkim.MsgTypeInteractive, content, err
 	case "text", "":
 		return larkim.MsgTypeText, larkim.NewTextMsgBuilder().Text(escapeText(text)).Build(), nil
@@ -521,7 +523,10 @@ func (b *Bot) replyPayload(text string) (string, string, error) {
 	}
 }
 
-func markdownCardContent(markdown string) (string, error) {
+func markdownCardContent(markdown string, margin string) (string, error) {
+	if strings.TrimSpace(margin) == "" {
+		margin = "0px 0px 8px 0px"
+	}
 	card := map[string]any{
 		"schema": "2.0",
 		"config": map[string]any{
@@ -535,6 +540,7 @@ func markdownCardContent(markdown string) (string, error) {
 				{
 					"tag":        "markdown",
 					"element_id": "answer",
+					"margin":     margin,
 					"content":    markdown,
 					"text_align": "left",
 					"text_size":  "large",

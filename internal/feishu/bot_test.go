@@ -76,7 +76,7 @@ func TestImageDataURL(t *testing.T) {
 }
 
 func TestMarkdownCardContentUsesJSON2RichText(t *testing.T) {
-	content, err := markdownCardContent("# 标题\n\n| A | B |\n| - | - |\n| 1 | 2 |")
+	content, err := markdownCardContent("# title\n\n| A | B |\n| - | - |\n| 1 | 2 |", "0px 0px 12px 0px")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,6 +102,9 @@ func TestMarkdownCardContentUsesJSON2RichText(t *testing.T) {
 	}
 	if element["tag"] != "markdown" || element["element_id"] != "answer" {
 		t.Fatalf("unexpected markdown element: %#v", element)
+	}
+	if element["margin"] != "0px 0px 12px 0px" {
+		t.Fatalf("unexpected markdown margin: %#v", element["margin"])
 	}
 }
 
