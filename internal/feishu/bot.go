@@ -537,7 +537,7 @@ func markdownCardContent(markdown string) (string, error) {
 					"element_id": "answer",
 					"content":    markdown,
 					"text_align": "left",
-					"text_size":  "normal",
+					"text_size":  "large",
 				},
 			},
 		},
