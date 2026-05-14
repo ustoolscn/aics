@@ -101,6 +101,8 @@ FEISHU_HISTORY_LOOKBACK_HOURS=168
 
 `HISTORY_SOURCE=memory` 时，服务在进程内保存最近对话，适合本地开发。`HISTORY_SOURCE=feishu` 时，服务每次从飞书当前话题拉取最近消息作为上下文，不长期保存聊天历史；如果飞书消息列表接口还没返回当前消息，服务会把当前用户消息补进上下文。
 
+飞书话题历史使用 `container_id_type=thread` 和当前 `thread_id` 获取；话题容器不支持 `start_time` / `end_time` 时间范围过滤。
+
 ## 图片消息
 
 ```text

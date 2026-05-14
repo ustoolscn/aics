@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -51,8 +50,8 @@ func (s *Store) AddMessage(_ context.Context, _ session.Message) error {
 }
 
 func (s *Store) RecentMessages(ctx context.Context, sessionID string, limit int) ([]session.Message, error) {
-	chatID, threadID, ok := strings.Cut(sessionID, ":")
-	if !ok || strings.TrimSpace(chatID) == "" || strings.TrimSpace(threadID) == "" {
+	_, threadID, ok := strings.Cut(sessionID, ":")
+	if !ok || strings.TrimSpace(threadID) == "" {
 		return nil, fmt.Errorf("invalid feishu history session id: %s", sessionID)
 	}
 	if limit <= 0 {
@@ -66,12 +65,9 @@ func (s *Store) RecentMessages(ctx context.Context, sessionID string, limit int)
 		pageSize = 100
 	}
 
-	now := time.Now()
 	resp, err := s.client.Im.Message.List(ctx, larkim.NewListMessageReqBuilder().
-		ContainerIdType("chat").
-		ContainerId(chatID).
-		StartTime(strconv.FormatInt(now.Add(-s.lookback).Unix(), 10)).
-		EndTime(strconv.FormatInt(now.Add(2*time.Minute).Unix(), 10)).
+		ContainerIdType("thread").
+		ContainerId(threadID).
 		SortType(larkim.SortTypeListMessageByCreateTimeDesc).
 		PageSize(pageSize).
 		Build())
@@ -87,7 +83,7 @@ func (s *Store) RecentMessages(ctx context.Context, sessionID string, limit int)
 
 	var history []session.Message
 	for _, item := range resp.Data.Items {
-		msg, ok := toSessionMessage(item, sessionID, threadID)
+		msg, ok := toSessionMessage(item, sessionID)
 		if !ok {
 			continue
 		}
@@ -102,11 +98,8 @@ func (s *Store) RecentMessages(ctx context.Context, sessionID string, limit int)
 	return history, nil
 }
 
-func toSessionMessage(item *larkim.Message, sessionID string, threadID string) (session.Message, bool) {
+func toSessionMessage(item *larkim.Message, sessionID string) (session.Message, bool) {
 	if item == nil || item.Body == nil || item.Body.Content == nil {
-		return session.Message{}, false
-	}
-	if deref(item.ThreadId) != threadID && deref(item.RootId) != threadID && deref(item.MessageId) != threadID {
 		return session.Message{}, false
 	}
 	if item.Deleted != nil && *item.Deleted {
@@ -194,11 +187,26 @@ func looksLikeReactionOnly(text string) bool {
 }
 
 func parseMillis(value string) time.Time {
-	millis, err := strconv.ParseInt(value, 10, 64)
+	millis, err := parseInt64(value)
 	if err != nil || millis <= 0 {
 		return time.Now()
 	}
 	return time.UnixMilli(millis)
+}
+
+func parseInt64(value string) (int64, error) {
+	var out int64
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return 0, fmt.Errorf("empty integer")
+	}
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return 0, fmt.Errorf("invalid integer: %s", value)
+		}
+		out = out*10 + int64(r-'0')
+	}
+	return out, nil
 }
 
 func deref(value *string) string {
