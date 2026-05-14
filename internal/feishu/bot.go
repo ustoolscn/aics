@@ -98,6 +98,9 @@ func (b *Bot) WebhookHandler() http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		if handled := writeChallengeResponse(w, body); handled {
+			return
+		}
 		resp := b.dispatcher.Handle(r.Context(), &larkevent.EventReq{
 			Header:     r.Header,
 			Body:       body,
@@ -111,6 +114,23 @@ func (b *Bot) WebhookHandler() http.HandlerFunc {
 		w.WriteHeader(resp.StatusCode)
 		_, _ = w.Write(resp.Body)
 	}
+}
+
+func writeChallengeResponse(w http.ResponseWriter, body []byte) bool {
+	var payload struct {
+		Challenge string `json:"challenge"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return false
+	}
+	if strings.TrimSpace(payload.Challenge) == "" {
+		return false
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"challenge": payload.Challenge,
+	})
+	return true
 }
 
 func (b *Bot) onMessage(ctx context.Context, event *larkim.P2MessageReceiveV1) error {

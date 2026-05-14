@@ -1,6 +1,7 @@
 package feishu
 
 import (
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -70,5 +71,19 @@ func TestImageDataURL(t *testing.T) {
 	got := imageDataURL("image/png", []byte("abc"))
 	if got != "data:image/png;base64,YWJj" {
 		t.Fatalf("unexpected data url: %s", got)
+	}
+}
+
+func TestWriteChallengeResponse(t *testing.T) {
+	rec := httptest.NewRecorder()
+	ok := writeChallengeResponse(rec, []byte(`{"challenge":"abc123"}`))
+	if !ok {
+		t.Fatal("expected challenge to be handled")
+	}
+	if rec.Code != 200 {
+		t.Fatalf("unexpected status: %d", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), `"challenge":"abc123"`) {
+		t.Fatalf("unexpected body: %s", rec.Body.String())
 	}
 }
