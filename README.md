@@ -140,6 +140,8 @@ go run ./cmd/aics-index
 
 索引命令会读取 `KNOWLEDGE_DIR` 下的 `.md` 和 `.txt` 文件，切成 chunk，使用 `gemini-embedding-2` 生成 768 维向量，并写入 `knowledge_chunks` 表。线上 Bot 查询时仍然调用同一个 `knowledge_search` 工具名，只是内部改为向量检索。
 
+生产镜像不打包 `knowledge/` 目录；RAG 模式下线上 Bot 只查 PostgreSQL/pgvector。Markdown 源文件建议保留在仓库或管理端，更新后重新运行索引命令写入数据库。
+
 `EMBEDDING_BASE_URL` 留空时会直连 Google Gemini 官方接口；使用第三方中转时，程序会请求：
 
 ```text

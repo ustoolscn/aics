@@ -14,7 +14,6 @@ WORKDIR /app
 
 COPY --from=builder /out/aics /app/aics
 COPY configs /app/configs
-COPY knowledge /app/knowledge
 COPY skills /app/skills
 
 ENV HTTP_ADDR=:8080
