@@ -47,6 +47,7 @@ internal/feishu           飞书事件和回复
 internal/llm              OpenAI-compatible 大模型客户端
 internal/orchestrator     对话编排
 internal/session          话题会话存储
+internal/feishuhistory    从飞书话题拉取历史上下文
 internal/tool             工具接口和知识库工具
 ```
 
@@ -59,7 +60,7 @@ internal/tool             工具接口和知识库工具
 - 图片消息：下载飞书图片，上传到图床，再以 vision 消息交给大模型
 - 每个话题独立 session
 - 加载客服身份提示文件
-- 最近多轮上下文
+- 最近多轮上下文：支持内存 session 或从飞书话题实时拉取
 - OpenAI-compatible Chat Completions 调用
 - 工具调用协议预留
 - 本地 Markdown 知识库检索工具
@@ -89,6 +90,16 @@ REDIS_CONN_STRING=redis://:password@127.0.0.1:6379/0
 开启流式后，Bot 会先在原话题下回复“正在处理...”，随后用飞书消息更新接口持续刷新这条回复。为了避免飞书重试导致重复回复，服务会按 `message_id` 做本地去重。
 
 `DEDUPE_STORE=memory` 时使用进程内存去重；`DEDUPE_STORE=redis` 时使用 Redis `SET NX EX` 做短期幂等去重，适合服务器和多实例部署。Redis 不保存聊天历史，也不会写入知识库。
+
+## 会话历史
+
+```text
+MAX_HISTORY_MESSAGES=20
+HISTORY_SOURCE=feishu
+FEISHU_HISTORY_LOOKBACK_HOURS=168
+```
+
+`HISTORY_SOURCE=memory` 时，服务在进程内保存最近对话，适合本地开发。`HISTORY_SOURCE=feishu` 时，服务每次从飞书当前话题拉取最近消息作为上下文，不长期保存聊天历史；如果飞书消息列表接口还没返回当前消息，服务会把当前用户消息补进上下文。
 
 ## 图片消息
 
@@ -135,7 +146,6 @@ go run ./cmd/aics-index
 
 ## 后续生产化建议
 
-- 把内存 session store 换成 PostgreSQL
-- 增加消息去重表，防止飞书重试导致重复回复
 - 增加转人工、查订单、创建工单等真实业务工具
-- 增加 webhook 模式，适配公网部署
+- 增加管理端，用于维护知识库 Markdown、触发 RAG 索引和查看未命中问题
+- 增加部署文档，覆盖 webhook 域名、Redis、PostgreSQL/pgvector、GHCR 镜像运行方式

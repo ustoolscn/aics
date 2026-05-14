@@ -33,6 +33,8 @@ type Config struct {
 	StreamPlaceholder   string
 	StreamUpdateEvery   time.Duration
 	MaxHistoryMessages  int
+	HistorySource       string
+	HistoryLookback     time.Duration
 	DedupeTTL           time.Duration
 	DedupeStore         string
 	RedisConnString     string
@@ -89,6 +91,8 @@ func Load() (Config, error) {
 		StreamPlaceholder:   getenv("STREAM_PLACEHOLDER", "正在处理..."),
 		StreamUpdateEvery:   time.Duration(getenvInt("STREAM_UPDATE_INTERVAL_MS", 800)) * time.Millisecond,
 		MaxHistoryMessages:  getenvInt("MAX_HISTORY_MESSAGES", 20),
+		HistorySource:       strings.ToLower(getenv("HISTORY_SOURCE", "memory")),
+		HistoryLookback:     time.Duration(getenvInt("FEISHU_HISTORY_LOOKBACK_HOURS", 168)) * time.Hour,
 		DedupeTTL:           time.Duration(getenvInt("MESSAGE_DEDUPE_TTL_SECONDS", 3600)) * time.Second,
 		DedupeStore:         strings.ToLower(getenv("DEDUPE_STORE", "memory")),
 		RedisConnString:     os.Getenv("REDIS_CONN_STRING"),

@@ -14,6 +14,7 @@ import (
 	"aics/internal/config"
 	"aics/internal/embedding"
 	"aics/internal/feishu"
+	"aics/internal/feishuhistory"
 	"aics/internal/imagehost"
 	"aics/internal/knowledge"
 	"aics/internal/llm"
@@ -41,7 +42,7 @@ func New(cfg config.Config) *App {
 		Level: slog.LevelInfo,
 	}))
 
-	store := session.NewMemoryStore()
+	store := setupSessionStore(cfg, logger)
 	promptLoader := prompt.NewLoader(cfg.PromptFile)
 	llmClient := llm.NewOpenAIClient(cfg.LLMBaseURL, cfg.LLMAPIKey, cfg.LLMModel, cfg.LLMTimeout, cfg.LogLLMRequest)
 	imageUploader := imagehost.NewClient(cfg.ImageHost)
@@ -106,6 +107,15 @@ func New(cfg config.Config) *App {
 		db:    db,
 		redis: redisClient,
 	}
+}
+
+func setupSessionStore(cfg config.Config, logger *slog.Logger) session.Store {
+	if cfg.HistorySource == "feishu" {
+		logger.Info("using feishu topic history", "lookback", cfg.HistoryLookback, "max_history", cfg.MaxHistoryMessages)
+		return feishuhistory.NewStore(cfg.FeishuAppID, cfg.FeishuAppSecret, cfg.HistoryLookback)
+	}
+	logger.Info("using memory session history", "max_history", cfg.MaxHistoryMessages)
+	return session.NewMemoryStore()
 }
 
 func setupDeduper(cfg config.Config, logger *slog.Logger) (feishu.Deduper, *redis.Client) {

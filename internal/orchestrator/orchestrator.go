@@ -100,6 +100,7 @@ func (o *Orchestrator) handle(ctx context.Context, incoming IncomingMessage, onU
 	if err != nil {
 		return "", err
 	}
+	history = ensureCurrentUserMessage(history, userMsg, o.maxHistory)
 
 	messages := buildLLMMessages(systemPrompt, o.skillIndex, sess, history)
 	if len(incoming.ImageURLs) > 0 {
@@ -149,6 +150,19 @@ func (o *Orchestrator) handle(ctx context.Context, incoming IncomingMessage, onU
 	}
 
 	return o.saveAndReturnReply(ctx, sess.ID, final)
+}
+
+func ensureCurrentUserMessage(history []session.Message, current session.Message, limit int) []session.Message {
+	for _, item := range history {
+		if current.FeishuMessageID != "" && item.FeishuMessageID == current.FeishuMessageID {
+			return history
+		}
+	}
+	history = append(history, current)
+	if limit > 0 && len(history) > limit {
+		history = history[len(history)-limit:]
+	}
+	return history
 }
 
 func (o *Orchestrator) saveAndReturnReply(ctx context.Context, sessionID string, final llm.Message) (string, error) {
