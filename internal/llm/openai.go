@@ -77,6 +77,9 @@ func (c *OpenAIClient) Chat(ctx context.Context, req ChatRequest) (*ChatResponse
 	if len(decoded.Choices) == 0 {
 		return nil, fmt.Errorf("llm response has no choices")
 	}
+	if strings.TrimSpace(MessageContentString(decoded.Choices[0].Message)) == "" && len(decoded.Choices[0].Message.ToolCalls) == 0 {
+		slog.Warn("llm response has empty assistant content", "body", truncate(string(respBody), 2000))
+	}
 
 	return &ChatResponse{Message: decoded.Choices[0].Message}, nil
 }
@@ -141,12 +144,19 @@ func (c *OpenAIClient) ChatStream(ctx context.Context, req ChatRequest, onDelta 
 			return nil, err
 		}
 		for _, choice := range chunk.Choices {
-			if choice.Delta.Content == "" {
+			delta := choice.Delta.Content
+			if delta == "" {
+				delta = choice.Delta.ReasoningContent
+			}
+			if delta == "" {
+				delta = choice.Delta.Reasoning
+			}
+			if delta == "" {
 				continue
 			}
-			full.WriteString(choice.Delta.Content)
+			full.WriteString(delta)
 			if onDelta != nil {
-				if err := onDelta(choice.Delta.Content); err != nil {
+				if err := onDelta(delta); err != nil {
 					return nil, err
 				}
 			}
@@ -237,7 +247,9 @@ type chatCompletionResponse struct {
 type chatCompletionStreamChunk struct {
 	Choices []struct {
 		Delta struct {
-			Content string `json:"content"`
+			Content          string `json:"content"`
+			ReasoningContent string `json:"reasoning_content"`
+			Reasoning        string `json:"reasoning"`
 		} `json:"delta"`
 	} `json:"choices"`
 }

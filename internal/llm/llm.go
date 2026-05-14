@@ -15,10 +15,12 @@ const (
 )
 
 type Message struct {
-	Role       Role       `json:"role"`
-	Content    any        `json:"content"`
-	ToolCallID string     `json:"tool_call_id,omitempty"`
-	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
+	Role             Role       `json:"role"`
+	Content          any        `json:"content"`
+	ReasoningContent string     `json:"reasoning_content,omitempty"`
+	Reasoning        string     `json:"reasoning,omitempty"`
+	ToolCallID       string     `json:"tool_call_id,omitempty"`
+	ToolCalls        []ToolCall `json:"tool_calls,omitempty"`
 }
 
 type ContentPart struct {
@@ -80,4 +82,14 @@ func ContentString(content any) string {
 	default:
 		return fmt.Sprint(value)
 	}
+}
+
+func MessageContentString(message Message) string {
+	if text := ContentString(message.Content); text != "" {
+		return text
+	}
+	if message.ReasoningContent != "" {
+		return message.ReasoningContent
+	}
+	return message.Reasoning
 }

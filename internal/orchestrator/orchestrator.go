@@ -146,7 +146,7 @@ func (o *Orchestrator) handle(ctx context.Context, incoming IncomingMessage, onU
 			return "", err
 		}
 	} else if onUpdate != nil {
-		streamText(llm.ContentString(first.Message.Content), onUpdate)
+		streamText(llm.MessageContentString(first.Message), onUpdate)
 	}
 
 	return o.saveAndReturnReply(ctx, sess.ID, final)
@@ -166,7 +166,7 @@ func ensureCurrentUserMessage(history []session.Message, current session.Message
 }
 
 func (o *Orchestrator) saveAndReturnReply(ctx context.Context, sessionID string, final llm.Message) (string, error) {
-	reply := strings.TrimSpace(llm.ContentString(final.Content))
+	reply := strings.TrimSpace(llm.MessageContentString(final))
 	if reply == "" {
 		reply = "我暂时没有生成有效回复，可以请你补充一下问题细节吗？"
 	}
@@ -195,11 +195,11 @@ func (o *Orchestrator) finalAnswer(ctx context.Context, messages []llm.Message, 
 			if err != nil {
 				return llm.Message{}, err
 			}
-			if llm.ContentString(resp.Message.Content) == "" {
+			if llm.MessageContentString(resp.Message) == "" {
 				resp.Message.Content = full.String()
 			}
-			if strings.TrimSpace(llm.ContentString(resp.Message.Content)) != "" {
-				_ = onUpdate(llm.ContentString(resp.Message.Content), true)
+			if strings.TrimSpace(llm.MessageContentString(resp.Message)) != "" {
+				_ = onUpdate(llm.MessageContentString(resp.Message), true)
 				return resp.Message, nil
 			}
 		}
