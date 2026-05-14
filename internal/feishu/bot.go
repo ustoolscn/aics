@@ -311,8 +311,8 @@ func (b *Bot) handleStream(ctx context.Context, incoming orchestrator.IncomingMe
 		var err error
 		replyMessageID, err = b.reply(ctx, incoming.MessageID, b.streamPlaceholder)
 		if err != nil {
-			b.logger.Error("placeholder reply failed", "message_id", incoming.MessageID, "err", err)
-			return err
+			b.logger.Warn("placeholder reply failed; stream updates disabled for this message", "message_id", incoming.MessageID, "err", err)
+			replyMessageID = ""
 		}
 		if replyMessageID == "" {
 			b.logger.Warn("placeholder reply returned empty message id; stream updates will fall back to final reply", "source_message_id", incoming.MessageID)
