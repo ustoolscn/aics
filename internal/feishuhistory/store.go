@@ -61,8 +61,8 @@ func (s *Store) RecentMessages(ctx context.Context, sessionID string, limit int)
 	if pageSize < 20 {
 		pageSize = 20
 	}
-	if pageSize > 100 {
-		pageSize = 100
+	if pageSize > 50 {
+		pageSize = 50
 	}
 
 	resp, err := s.client.Im.Message.List(ctx, larkim.NewListMessageReqBuilder().
