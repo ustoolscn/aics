@@ -523,13 +523,22 @@ func (b *Bot) replyPayload(text string) (string, string, error) {
 
 func markdownCardContent(markdown string) (string, error) {
 	card := map[string]any{
+		"schema": "2.0",
 		"config": map[string]any{
 			"wide_screen_mode": true,
+			"update_multi":     true,
 		},
-		"elements": []map[string]any{
-			{
-				"tag":     "markdown",
-				"content": markdown,
+		"body": map[string]any{
+			"direction": "vertical",
+			"padding":   "12px 12px 12px 12px",
+			"elements": []map[string]any{
+				{
+					"tag":        "markdown",
+					"element_id": "answer",
+					"content":    markdown,
+					"text_align": "left",
+					"text_size":  "normal",
+				},
 			},
 		},
 	}

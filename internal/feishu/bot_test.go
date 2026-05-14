@@ -1,6 +1,7 @@
 package feishu
 
 import (
+	"encoding/json"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -71,6 +72,36 @@ func TestImageDataURL(t *testing.T) {
 	got := imageDataURL("image/png", []byte("abc"))
 	if got != "data:image/png;base64,YWJj" {
 		t.Fatalf("unexpected data url: %s", got)
+	}
+}
+
+func TestMarkdownCardContentUsesJSON2RichText(t *testing.T) {
+	content, err := markdownCardContent("# 标题\n\n| A | B |\n| - | - |\n| 1 | 2 |")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var card map[string]any
+	if err := json.Unmarshal([]byte(content), &card); err != nil {
+		t.Fatal(err)
+	}
+	if card["schema"] != "2.0" {
+		t.Fatalf("expected schema 2.0, got %#v", card["schema"])
+	}
+	body, ok := card["body"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing body: %#v", card)
+	}
+	elements, ok := body["elements"].([]any)
+	if !ok || len(elements) != 1 {
+		t.Fatalf("unexpected body elements: %#v", body["elements"])
+	}
+	element, ok := elements[0].(map[string]any)
+	if !ok {
+		t.Fatalf("unexpected element: %#v", elements[0])
+	}
+	if element["tag"] != "markdown" || element["element_id"] != "answer" {
+		t.Fatalf("unexpected markdown element: %#v", element)
 	}
 }
 
