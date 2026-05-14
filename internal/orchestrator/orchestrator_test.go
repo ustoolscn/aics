@@ -118,6 +118,42 @@ func TestHandleExecutesKnowledgeTool(t *testing.T) {
 	}
 }
 
+func TestHandleRetriesEmptyAssistantMessage(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	promptFile := filepath.Join(dir, "customer_service.md")
+	if err := os.WriteFile(promptFile, []byte("You are support."), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	fake := &recordingLLM{
+		responses: []llm.Message{
+			{Role: llm.RoleAssistant},
+			{Role: llm.RoleAssistant, Content: "final reply"},
+		},
+	}
+	orch := New(
+		session.NewMemoryStore(),
+		prompt.NewLoader(promptFile),
+		fake,
+		tool.NewRegistry(),
+		20,
+	)
+
+	reply, err := orch.Handle(ctx, IncomingMessage{
+		MessageID: "m1", ChatID: "chat", ThreadID: "thread-a", RootMessageID: "m1", SenderID: "u1", Text: "hello",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reply != "final reply" {
+		t.Fatalf("unexpected reply: %s", reply)
+	}
+	if len(fake.requests) != 2 {
+		t.Fatalf("expected retry after empty assistant message, got %d calls", len(fake.requests))
+	}
+}
+
 type recordingLLM struct {
 	requests  []llm.ChatRequest
 	responses []llm.Message

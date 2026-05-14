@@ -145,6 +145,11 @@ func (o *Orchestrator) handle(ctx context.Context, incoming IncomingMessage, onU
 		if err != nil {
 			return "", err
 		}
+	} else if strings.TrimSpace(llm.MessageContentString(first.Message)) == "" {
+		final, err = o.finalAnswer(ctx, messages, onUpdate)
+		if err != nil {
+			return "", err
+		}
 	} else if onUpdate != nil {
 		streamText(llm.MessageContentString(first.Message), onUpdate)
 	}
