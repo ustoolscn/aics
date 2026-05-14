@@ -1,0 +1,38 @@
+{
+  "id": "compare_best_price",
+  "name": "查询最优价格",
+  "description": "当用户询问哪个价格最低、哪个方案最划算、实时价格对比时使用。",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "product_name": {
+        "type": "string",
+        "description": "用户想要查询价格的商品名称"
+      },
+      "city": {
+        "type": "string",
+        "description": "用户所在城市，可选"
+      }
+    },
+    "required": ["product_name"]
+  },
+  "max_steps": 6,
+  "workflow": [
+    {
+      "id": "fetch_prices",
+      "type": "script",
+      "entry": "steps/fetch_prices.js"
+    },
+    {
+      "id": "judge_next",
+      "type": "llm",
+      "instruction": "你正在执行查询最优价格技能。请根据 fetch_prices 的结果判断是否已经足够回答用户。如果价格结果为空，返回 {\"next_step\":\"finish\",\"summary\":\"没有查到可用价格\"}。如果有结果，返回 {\"next_step\":\"build_result\",\"reason\":\"已有可比较价格\"}。",
+      "choices": ["build_result", "finish"]
+    },
+    {
+      "id": "build_result",
+      "type": "script",
+      "entry": "steps/build_result.js"
+    }
+  ]
+}

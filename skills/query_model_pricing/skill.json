@@ -1,0 +1,38 @@
+{
+  "id": "query_model_pricing",
+  "name": "查询模型实时价格",
+  "description": "当用户询问 Cooper API 模型实时价格、某个模型多少钱、哪个模型最便宜、分组价格、auto 分组价格、按次计费或每百万 token 计费时使用。",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "model_name": {
+        "type": "string",
+        "description": "用户要查询的模型名称，可模糊匹配。用户问最便宜模型时可不填。"
+      },
+      "group": {
+        "type": "string",
+        "description": "用户选择的价格分组，例如 default、auto、CC优质、GPT福利、Gemini特惠。默认 auto。"
+      },
+      "endpoint_type": {
+        "type": "string",
+        "description": "接口类型过滤，例如 openai、gemini、image-generation。可选。"
+      },
+      "tag_keyword": {
+        "type": "string",
+        "description": "标签关键词过滤，例如 大语言模型、生图模型、主流模型。可选。"
+      },
+      "limit": {
+        "type": "number",
+        "description": "返回模型数量上限，默认 10。"
+      }
+    }
+  },
+  "max_steps": 4,
+  "workflow": [
+    {
+      "id": "fetch_pricing",
+      "type": "script",
+      "entry": "steps/fetch_pricing.js"
+    }
+  ]
+}
