@@ -124,6 +124,7 @@ func (c *OpenAIClient) ChatStream(ctx context.Context, req ChatRequest, onDelta 
 	}
 
 	var full bytes.Buffer
+	toolCalls := newStreamToolCallAccumulator()
 	scanner := bufio.NewScanner(resp.Body)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	for scanner.Scan() {
@@ -144,6 +145,7 @@ func (c *OpenAIClient) ChatStream(ctx context.Context, req ChatRequest, onDelta 
 			return nil, err
 		}
 		for _, choice := range chunk.Choices {
+			toolCalls.Add(choice.Delta.ToolCalls)
 			delta := choice.Delta.Content
 			if delta == "" {
 				delta = choice.Delta.ReasoningContent
@@ -166,7 +168,7 @@ func (c *OpenAIClient) ChatStream(ctx context.Context, req ChatRequest, onDelta 
 		return nil, err
 	}
 
-	return &ChatResponse{Message: Message{Role: RoleAssistant, Content: full.String()}}, nil
+	return &ChatResponse{Message: Message{Role: RoleAssistant, Content: full.String(), ToolCalls: toolCalls.List()}}, nil
 }
 
 func (c *OpenAIClient) logPayload(kind string, payload chatCompletionRequest) {
@@ -250,6 +252,73 @@ type chatCompletionStreamChunk struct {
 			Content          string `json:"content"`
 			ReasoningContent string `json:"reasoning_content"`
 			Reasoning        string `json:"reasoning"`
+			ToolCalls        []struct {
+				Index    int    `json:"index"`
+				ID       string `json:"id"`
+				Type     string `json:"type"`
+				Function struct {
+					Name      string `json:"name"`
+					Arguments string `json:"arguments"`
+				} `json:"function"`
+			} `json:"tool_calls"`
 		} `json:"delta"`
 	} `json:"choices"`
+}
+
+type streamToolCallAccumulator struct {
+	items map[int]*ToolCall
+	order []int
+}
+
+func newStreamToolCallAccumulator() *streamToolCallAccumulator {
+	return &streamToolCallAccumulator{items: make(map[int]*ToolCall)}
+}
+
+func (a *streamToolCallAccumulator) Add(chunks []struct {
+	Index    int    `json:"index"`
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Function struct {
+		Name      string `json:"name"`
+		Arguments string `json:"arguments"`
+	} `json:"function"`
+}) {
+	for _, chunk := range chunks {
+		item, ok := a.items[chunk.Index]
+		if !ok {
+			a.order = append(a.order, chunk.Index)
+			item = &ToolCall{}
+			a.items[chunk.Index] = item
+		}
+		if chunk.ID != "" {
+			item.ID = chunk.ID
+		}
+		if chunk.Type != "" {
+			item.Type = chunk.Type
+		}
+		if chunk.Function.Name != "" {
+			item.Function.Name += chunk.Function.Name
+		}
+		if chunk.Function.Arguments != "" {
+			item.Function.Arguments += chunk.Function.Arguments
+		}
+	}
+}
+
+func (a *streamToolCallAccumulator) List() []ToolCall {
+	out := make([]ToolCall, 0, len(a.order))
+	for _, index := range a.order {
+		item := *a.items[index]
+		if item.Type == "" {
+			item.Type = "function"
+		}
+		if item.ID == "" {
+			item.ID = fmt.Sprintf("call_%d", index)
+		}
+		if item.Function.Name == "" && item.Function.Arguments == "" {
+			continue
+		}
+		out = append(out, item)
+	}
+	return out
 }

@@ -111,10 +111,10 @@ func (o *Orchestrator) handle(ctx context.Context, incoming IncomingMessage, onU
 		return o.saveAndReturnReply(ctx, sess.ID, final)
 	}
 
-	first, err := o.llm.Chat(ctx, llm.ChatRequest{
+	first, firstStreamed, err := o.firstAnswer(ctx, llm.ChatRequest{
 		Messages: messages,
 		Tools:    o.tools.Definitions(),
-	})
+	}, onUpdate)
 	if err != nil {
 		return "", err
 	}
@@ -150,11 +150,37 @@ func (o *Orchestrator) handle(ctx context.Context, incoming IncomingMessage, onU
 		if err != nil {
 			return "", err
 		}
-	} else if onUpdate != nil {
+	} else if onUpdate != nil && !firstStreamed {
 		streamText(llm.MessageContentString(first.Message), onUpdate)
 	}
 
 	return o.saveAndReturnReply(ctx, sess.ID, final)
+}
+
+func (o *Orchestrator) firstAnswer(ctx context.Context, req llm.ChatRequest, onUpdate StreamUpdate) (*llm.ChatResponse, bool, error) {
+	if onUpdate != nil {
+		if streamClient, ok := o.llm.(llm.StreamClient); ok {
+			var full strings.Builder
+			resp, err := streamClient.ChatStream(ctx, req, func(delta string) error {
+				full.WriteString(delta)
+				return onUpdate(full.String(), false)
+			})
+			if err != nil {
+				return nil, false, err
+			}
+			if llm.MessageContentString(resp.Message) == "" {
+				resp.Message.Content = full.String()
+			}
+			if strings.TrimSpace(llm.MessageContentString(resp.Message)) != "" {
+				_ = onUpdate(llm.MessageContentString(resp.Message), true)
+				return resp, true, nil
+			}
+			return resp, false, nil
+		}
+	}
+
+	resp, err := o.llm.Chat(ctx, req)
+	return resp, false, err
 }
 
 func ensureCurrentUserMessage(history []session.Message, current session.Message, limit int) []session.Message {
