@@ -23,9 +23,12 @@ Copy-Item .env.example .env
 ```text
 FEISHU_APP_ID=cli_xxx
 FEISHU_APP_SECRET=xxx
+QQ_BOT_APP_ID=1020xxx
+QQ_BOT_SECRET=xxx
 LLM_API_KEY=sk-xxx
 LLM_BASE_URL=https://api.openai.com/v1
-LLM_MODEL=gpt-4.1-mini
+LLM_MODEL=gpt-5.4
+LLM_HOSTED_TOOLS=web_search_preview
 ```
 
 3. 启动：
@@ -44,7 +47,8 @@ configs/customer_service.md 客服身份和行为提示
 internal/app              依赖装配
 internal/config           配置
 internal/feishu           飞书事件和回复
-internal/llm              OpenAI-compatible 大模型客户端
+internal/qqbot            QQ 机器人事件和回复
+internal/llm              OpenAI Responses API 大模型客户端
 internal/orchestrator     对话编排
 internal/session          话题会话存储
 internal/feishuhistory    从飞书话题拉取历史上下文
@@ -54,6 +58,7 @@ internal/tool             工具接口和知识库工具
 ## 当前能力
 
 - 飞书长连接接收消息事件
+- QQ 机器人 Webhook 接收单聊和群 @ 消息事件
 - 收到消息后先添加 ACK 表情
 - 流式输出：先回复占位消息，再持续更新内容
 - 消息去重：同一个飞书消息事件只处理一次
@@ -61,11 +66,13 @@ internal/tool             工具接口和知识库工具
 - 每个话题独立 session
 - 加载客服身份提示文件
 - 最近多轮上下文：支持内存 session 或从飞书话题实时拉取
-- OpenAI-compatible Chat Completions 调用
+- OpenAI Responses API 调用
+- OpenAI 托管工具配置，例如 `web_search_preview`
 - 工具调用协议预留
 - 本地 Markdown 知识库检索工具
 - PostgreSQL/pgvector + Gemini Embedding RAG 知识库检索
 - 回复到收到的飞书消息下
+- QQ 机器人被动回复到收到的 QQ 单聊或群 @ 消息
 
 ## ACK 表情
 
@@ -76,6 +83,17 @@ ACK_REACTION_EMOJI=OK
 ```
 
 如果飞书后台没有开放表情回复权限，或表情类型不被当前租户支持，服务会记录 warning，并继续生成客服回复。
+
+## QQ 机器人渠道
+
+```text
+QQ_BOT_APP_ID=1020xxx
+QQ_BOT_SECRET=xxx
+QQ_BOT_WEBHOOK_PATH=/qq/events
+QQ_BOT_BASE_URL=https://api.sgroup.qq.com
+```
+
+配置 `QQ_BOT_APP_ID` 和 `QQ_BOT_SECRET` 后，服务会启用 QQ 机器人 Webhook。QQ 开放平台回调地址配置为 `https://你的域名/qq/events`，当前支持 `C2C_MESSAGE_CREATE` 单聊消息和 `GROUP_AT_MESSAGE_CREATE` 群 @ 消息，并使用 QQ 被动回复接口返回文本消息。
 
 ## 流式输出和去重
 

@@ -20,6 +20,7 @@ import (
 	"aics/internal/llm"
 	"aics/internal/orchestrator"
 	"aics/internal/prompt"
+	"aics/internal/qqbot"
 	"aics/internal/session"
 	"aics/internal/skill"
 	"aics/internal/tool"
@@ -44,7 +45,7 @@ func New(cfg config.Config) *App {
 
 	store := setupSessionStore(cfg, logger)
 	promptLoader := prompt.NewLoader(cfg.PromptFile)
-	llmClient := llm.NewOpenAIClient(cfg.LLMBaseURL, cfg.LLMAPIKey, cfg.LLMModel, cfg.LLMTimeout, cfg.LogLLMRequest)
+	llmClient := llm.NewOpenAIClient(cfg.LLMBaseURL, cfg.LLMAPIKey, cfg.LLMModel, cfg.LLMTimeout, cfg.LogLLMRequest, cfg.LLMHostedTools)
 	imageUploader := imagehost.NewClient(cfg.ImageHost)
 	registeredTools := []tool.Tool{
 		tool.NewKnowledgeSearch(cfg.KnowledgeDir),
@@ -74,6 +75,22 @@ func New(cfg config.Config) *App {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
+	if cfg.QQBotAppID != "" && cfg.QQBotSecret != "" {
+		qq := qqbot.New(
+			cfg.QQBotAppID,
+			cfg.QQBotSecret,
+			cfg.QQBotBaseURL,
+			cfg.QQBotWebhookPath,
+			cfg.QQBotLogRawMessage,
+			orch,
+			deduper,
+			logger,
+		)
+		mux.HandleFunc(qq.WebhookPath(), qq.WebhookHandler())
+		logger.Info("qqbot webhook enabled", "path", qq.WebhookPath(), "base_url", cfg.QQBotBaseURL)
+	} else {
+		logger.Info("qqbot webhook disabled; QQ_BOT_APP_ID or QQ_BOT_SECRET is empty")
+	}
 	bot := feishu.NewBot(
 		cfg.FeishuAppID,
 		cfg.FeishuAppSecret,

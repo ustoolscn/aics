@@ -18,6 +18,11 @@ type Config struct {
 	FeishuAppSecret     string
 	FeishuVerifyToken   string
 	FeishuEncryptKey    string
+	QQBotAppID          string
+	QQBotSecret         string
+	QQBotBaseURL        string
+	QQBotWebhookPath    string
+	QQBotLogRawMessage  bool
 	ReactionReceived    string
 	ReactionProcessing  string
 	ReactionDone        string
@@ -28,6 +33,7 @@ type Config struct {
 	LLMBaseURL          string
 	LLMAPIKey           string
 	LLMModel            string
+	LLMHostedTools      []string
 	LLMTimeout          time.Duration
 	LogLLMRequest       bool
 	LLMStream           bool
@@ -77,6 +83,11 @@ func Load() (Config, error) {
 		FeishuAppSecret:     os.Getenv("FEISHU_APP_SECRET"),
 		FeishuVerifyToken:   os.Getenv("FEISHU_VERIFICATION_TOKEN"),
 		FeishuEncryptKey:    os.Getenv("FEISHU_ENCRYPT_KEY"),
+		QQBotAppID:          os.Getenv("QQ_BOT_APP_ID"),
+		QQBotSecret:         os.Getenv("QQ_BOT_SECRET"),
+		QQBotBaseURL:        strings.TrimRight(getenv("QQ_BOT_BASE_URL", "https://api.sgroup.qq.com"), "/"),
+		QQBotWebhookPath:    getenv("QQ_BOT_WEBHOOK_PATH", "/qq/events"),
+		QQBotLogRawMessage:  getenvBool("QQ_BOT_LOG_RAW_MESSAGE", false),
 		ReactionReceived:    getenv("REACTION_RECEIVED_EMOJI", getenv("ACK_REACTION_EMOJI", "OK")),
 		ReactionProcessing:  getenv("REACTION_PROCESSING_EMOJI", "Thinking"),
 		ReactionDone:        getenv("REACTION_DONE_EMOJI", getenv("DONE_REACTION_EMOJI", "DONE")),
@@ -86,7 +97,8 @@ func Load() (Config, error) {
 		PromptFile:          getenv("PROMPT_FILE", "configs/customer_service.md"),
 		LLMBaseURL:          strings.TrimRight(getenv("LLM_BASE_URL", "https://api.openai.com/v1"), "/"),
 		LLMAPIKey:           os.Getenv("LLM_API_KEY"),
-		LLMModel:            getenv("LLM_MODEL", "gpt-4.1-mini"),
+		LLMModel:            getenv("LLM_MODEL", "gpt-5.4"),
+		LLMHostedTools:      csvList(os.Getenv("LLM_HOSTED_TOOLS")),
 		LLMTimeout:          time.Duration(getenvInt("LLM_TIMEOUT_SECONDS", 60)) * time.Second,
 		LogLLMRequest:       getenvBool("LOG_LLM_REQUEST", true),
 		LLMStream:           getenvBool("LLM_STREAM", true),
@@ -171,6 +183,24 @@ func getenvBool(key string, fallback bool) bool {
 	default:
 		return fallback
 	}
+}
+
+func csvList(value string) []string {
+	fields := strings.Split(value, ",")
+	out := make([]string, 0, len(fields))
+	seen := make(map[string]struct{})
+	for _, field := range fields {
+		field = strings.TrimSpace(field)
+		if field == "" {
+			continue
+		}
+		if _, ok := seen[field]; ok {
+			continue
+		}
+		seen[field] = struct{}{}
+		out = append(out, field)
+	}
+	return out
 }
 
 func LoadDotEnv(path string) error {
