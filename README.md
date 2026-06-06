@@ -93,7 +93,7 @@ QQ_BOT_WEBHOOK_PATH=/qq/events
 QQ_BOT_BASE_URL=https://api.sgroup.qq.com
 ```
 
-配置 `QQ_BOT_APP_ID` 和 `QQ_BOT_SECRET` 后，服务会启用 QQ 机器人 Webhook。QQ 开放平台回调地址配置为 `https://你的域名/qq/events`，当前支持 `C2C_MESSAGE_CREATE` 单聊消息和 `GROUP_AT_MESSAGE_CREATE` 群 @ 消息，并使用 QQ 被动回复接口返回文本消息。
+配置 `QQ_BOT_SECRET` 后，服务会启用 QQ 机器人 Webhook 并支持开放平台的回调地址验证。QQ 开放平台回调地址配置为 `https://你的域名/qq/events`；如需回复消息，还需要配置 `QQ_BOT_APP_ID` 以获取 `access_token`。当前支持 `C2C_MESSAGE_CREATE` 单聊消息和 `GROUP_AT_MESSAGE_CREATE` 群 @ 消息，并使用 QQ 被动回复接口返回文本消息。
 
 ## 流式输出和去重
 

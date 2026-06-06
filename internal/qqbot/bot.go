@@ -117,7 +117,7 @@ func (b *Bot) writeValidation(w http.ResponseWriter, payload callbackPayload) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	signature, err := validationSignature(b.secret, data.EventTS, data.PlainToken)
+	signature, err := validationSignature(b.secret, data.EventTS.String(), data.PlainToken)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -397,8 +397,28 @@ type callbackPayload struct {
 }
 
 type validationPayload struct {
-	PlainToken string `json:"plain_token"`
-	EventTS    string `json:"event_ts"`
+	PlainToken string     `json:"plain_token"`
+	EventTS    jsonString `json:"event_ts"`
+}
+
+type jsonString string
+
+func (s *jsonString) UnmarshalJSON(data []byte) error {
+	var text string
+	if err := json.Unmarshal(data, &text); err == nil {
+		*s = jsonString(text)
+		return nil
+	}
+	var number json.Number
+	if err := json.Unmarshal(data, &number); err == nil {
+		*s = jsonString(number.String())
+		return nil
+	}
+	return fmt.Errorf("expected string or number")
+}
+
+func (s jsonString) String() string {
+	return string(s)
 }
 
 type callbackMessage struct {

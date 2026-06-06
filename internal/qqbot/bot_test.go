@@ -47,6 +47,33 @@ func TestWebhookValidationResponse(t *testing.T) {
 	}
 }
 
+func TestWebhookValidationAllowsEmptyAppID(t *testing.T) {
+	bot := New("", "DG5g3B4j9X2KOErG", "https://api.sgroup.qq.com", "/qq/events", false, nil, feishu.NewMemoryDeduper(time.Hour), slog.Default())
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/qq/events", strings.NewReader(`{"op":13,"d":{"plain_token":"Arq0D5A61EgUu4OxUvOp","event_ts":"1725442341"}}`))
+
+	bot.WebhookHandler()(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"signature"`) {
+		t.Fatalf("missing signature response: %s", rec.Body.String())
+	}
+}
+
+func TestWebhookValidationAcceptsNumericEventTS(t *testing.T) {
+	bot := New("11111111", "DG5g3B4j9X2KOErG", "https://api.sgroup.qq.com", "/qq/events", false, nil, feishu.NewMemoryDeduper(time.Hour), slog.Default())
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/qq/events", strings.NewReader(`{"op":13,"d":{"plain_token":"Arq0D5A61EgUu4OxUvOp","event_ts":1725442341}}`))
+
+	bot.WebhookHandler()(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unexpected status: %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestParseC2CMessage(t *testing.T) {
 	var payload callbackPayload
 	if err := json.Unmarshal([]byte(`{

@@ -75,7 +75,7 @@ func New(cfg config.Config) *App {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
-	if cfg.QQBotAppID != "" && cfg.QQBotSecret != "" {
+	if cfg.QQBotSecret != "" {
 		qq := qqbot.New(
 			cfg.QQBotAppID,
 			cfg.QQBotSecret,
@@ -89,7 +89,7 @@ func New(cfg config.Config) *App {
 		mux.HandleFunc(qq.WebhookPath(), qq.WebhookHandler())
 		logger.Info("qqbot webhook enabled", "path", qq.WebhookPath(), "base_url", cfg.QQBotBaseURL)
 	} else {
-		logger.Info("qqbot webhook disabled; QQ_BOT_APP_ID or QQ_BOT_SECRET is empty")
+		logger.Info("qqbot webhook disabled; QQ_BOT_SECRET is empty")
 	}
 	bot := feishu.NewBot(
 		cfg.FeishuAppID,
